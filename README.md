@@ -1,149 +1,94 @@
 Trading Engine (Bybit Testnet)
 
-Невеликий Python-двигун для демо-торгівлі деривативами на Bybit Testnet.
-Стартує угоду за JSON-конфігом, ставить TP у відсотках від середньої, робить усереднення лімітками, перевиставляє TP при зміні середньої, має простий UI та один REST-ендпоінт.
+Невеликий Python-двигун для демо-торгівлі деривативами на Bybit Testnet:
 
-✨ Можливості
+старт угоди з JSON-конфігом;
 
-Підключення до Bybit Testnet через ccxt (async).
+TP у % від середньої ціни (автоматичний replace після усереднення);
 
-Авто-мапінг BTC/USDT → BTC/USDT:USDT (linear perp).
+драбинка limit-ордерів для усереднення;
 
-Вхід market на суму в USDT (двигун сам рахує кількість контрактів та округляє до мін-лота).
+клієнтський SL / Trailing / BE;
 
-Драбинка limit-ордерів для усереднення (діапазон/кількість сходинок).
+простий веб-UI і єдиний REST ендпоінт /.
 
-TP як reduceOnly від поточної середньої з автоматичним replace після усереднення.
+Зміст
 
-Клієнтський SL / TrailingSL / Move-to-Breakeven.
+Вимоги
 
-Простий веб-UI та один ендпоінт / (UI/JSON/Start/Stop).
+Швидкий старт (Docker)
 
-🧱 Технічний стек
+Змінні оточення (.env)
 
-Python 3.11, FastAPI, Uvicorn
+Приклад конфігу (config.json)
 
-ccxt.async_support (Bybit)
+Користування UI та API
 
-Docker / docker-compose
+Як це працює
 
-HTML/JS UI без фреймворків
+Траблшутінг
 
-📁 Структура
-app/
-  api.py           # єдиний маршрут "/", UI + REST
-  engine.py        # основна логіка (вхід, TP, драбинка, монітор)
-  exchange.py      # обгортка ccxt.bybit (async) + precision/limits/balance
-  models.py        # Pydantic-моделі
-  tp_manager.py    # обчислення TP та напрямків buy/sell
-  static/index.html# мінімальний UI
-Dockerfile
-docker-compose.yml
-requirements.txt
-.env_sample
-sample_config.json
+Налаштування ризику
 
-✅ Вимоги
+Скріншоти
+
+Безпека
+
+Вимоги
 
 Docker + Docker Compose
 
-Обліковка Bybit Testnet (Demo Trading) з Unified Trading балансом (USDT)
+Обліковка Bybit Demo (Testnet) з балансом USDT в Unified Trading
 
-🚀 Швидкий старт (Docker)
+Швидкий старт (Docker)
 1) Створи Testnet API-ключ
 
-Переконайся, що вгорі на Bybit обрано Demo Trading.
+Увімкни Demo Trading у шапці Bybit.
 
-Create New Key → API Transaction
+Create New Key → API Transaction.
 
-Permissions:
+Permissions (Read/Write):
 
-Unified Trading → Contract → Orders (Read-Write)
+Unified Trading → Contract → Orders
 
-Unified Trading → Contract → Positions (Read-Write)
+Unified Trading → Contract → Positions
 
-IP restriction: No IP restriction (для тесту ок)
+IP restriction: No IP restriction (для тесту ок).
 
-Збережи API Key та Secret (secret показують один раз)
+Збережи API Key та Secret (secret показують лише один раз).
 
-2) Заповни .env (у корені репозиторію)
-
-Не клади .env у .venv/ і не коміть його.
-
+2) Налаштуй .env (у корені репо)
 BYBIT_API_KEY=your_testnet_key
 BYBIT_SECRET=your_testnet_secret
 MARKET_TYPE=swap
 POLL_INTERVAL=2.0
 
+
+За потреби скопіюй з .env_sample.
+
 3) Запуск
 docker compose up --build -d
-# логи:
-docker logs -f trade-engine       # або: docker compose logs -f engine
+# Логи:
+docker logs -f trade-engine
+# або
+docker compose logs -f engine
 
 
 Відкрий http://localhost:8000/
 .
-Угорі має з’явитися рядок із free USDT. Якщо 0 — на Bybit зроби Assets → Transfer у Unified Trading (USDT).
+Якщо у статусі free_usdt: 0 — зроби Assets → Transfer до Unified Trading (USDT).
 
-🖱️ Користування
+Змінні оточення (.env)
+Змінна	Опис	Приклад
+BYBIT_API_KEY	Testnet API key	abc...
+BYBIT_SECRET	Testnet API secret	xyz...
+MARKET_TYPE	Тип ринку для ccxt	swap
+POLL_INTERVAL	Інтервал моніторингу (сек)	2.0
+Приклад конфігу (config.json)
 
-UI: натисни Start from file і підвантаж свій config.json.
-У блоці Status з’явиться size > 0 — позиція відкрита; нижче відобразяться TP та драбинка.
+Використовуй деривативний символ BTC/USDT:USDT.
+tp_orders — у % від середньої, з автоматичним перерахунком після доборів.
 
-Stop: зупиняє моніторинг (існуючі ордери на біржі лишаються).
-
-REST (все на /)
-
-GET / → UI (HTML)
-
-GET /?json=1 → JSON-стан (включно з free_usdt)
-
-POST / → старт угоди
-
-multipart/form-data з полем file (конфіг) або
-
-raw JSON у тілі (той самий конфіг)
-
-DELETE / → стоп моніторингу
-
-Приклад відповіді GET /?json=1:
-
-{
-  "running": true,
-  "config": { "...": "..." },
-  "position": {
-    "symbol": "BTC/USDT:USDT",
-    "side": "short",
-    "size": 0.019,
-    "avg_entry_price": 279096.74,
-    "leverage": 10
-  },
-  "tp_orders": [...],
-  "limit_ladder": [...],
-  "logs": ["[ENTRY] ...", "[TP] ..."],
-  "free_usdt": 9876.12
-}
-
-🧩 Як це працює (коротко)
-
-Market-вхід на market_order_amount (USDT) → кількість ≈ USDT / last_price, з округленням до мін-лота.
-
-TP — reduceOnly на % від поточний середньої (після філа сходинки середня і TP перераховуються).
-
-Драбинка — N limit ордерів проти ціни у діапазоні range_percent від середньої (сума USDT ділиться порівну).
-
-Захист (клієнтський): stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven. За тригером — market reduceOnly.
-
-Моніторинг раз на POLL_INTERVAL сек. Після engine_deal_duration_minutes зупиняється (ордери на біржі лишаються).
-
-🧪 Приклади файлів
-.env_sample
-BYBIT_API_KEY=your_testnet_key
-BYBIT_SECRET=your_testnet_secret
-MARKET_TYPE=swap
-POLL_INTERVAL=2.0
-
-sample_config.json (готовий робочий приклад)
 {
   "account": "Bybit/Testnet",
   "symbol": "BTC/USDT:USDT",
@@ -168,28 +113,74 @@ sample_config.json (готовий робочий приклад)
 }
 
 
-Можна вказати і BTC/USDT — двигун спробує замапити на дериватив автоматично, але краще явно BTC/USDT:USDT.
+У репозиторії є файл-заготовка: sample_config.json.
 
-🛠️ Траблшутінг
+Користування UI та API
+
+UI: на сторінці натисни Start from file і підвантаж config.json.
+Нижче побачиш TP ордери, драбинку, логи.
+
+Зупинка: кнопка Stop (зупиняє моніторинг; ордери на біржі не чіпає).
+
+REST (все на /)
+
+GET / → UI (HTML)
+
+GET /?json=1 → JSON-стан (разом із free_usdt)
+
+POST / → старт угоди:
+
+multipart/form-data з полем file (конфіг), або
+
+raw JSON (той самий конфіг) у тілі.
+
+DELETE / → стоп моніторингу
+
+Як це працює
+
+Market-вхід на market_order_amount (USDT)
+→ кількість ≈ USDT / last_price, округлення до мін-лота.
+
+TP — reduceOnly у % від середньої; після філа сходинки середня і TP перевиставляються.
+
+Драбинка — N limit-ордерів проти ціни в діапазоні range_percent від середньої;
+limit_orders_amount ділиться порівну між сходинками.
+
+Захист (клієнтський): stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven.
+За тригером — market reduceOnly.
+
+Моніторинг раз на POLL_INTERVAL сек; по engine_deal_duration_minutes зупиняється.
+
+Траблшутінг
 Симптом / код	Причина	Що робити
-AuthenticationError 10003: API key is invalid	ключ не з Testnet / не той тип / не підхопився	Створи ключ на Demo Trading → API Transaction, дозволь Orders + Positions, онови .env у корені, docker compose down && up --build -d
+AuthenticationError 10003: API key is invalid	ключ не Testnet / не підхопився	Створи ключ на Demo → API Transaction, дозволь Orders + Positions. Онови .env у корені, перезапусти: docker compose down && docker compose up --build -d
 InsufficientFunds / 110007 ab not enough	немає USDT у Unified Trading	Assets → Transfer з Funding у Unified Trading (USDT)
-setLeverage() requires linear/inverse market	символ спотовий	Вкажи symbol: "BTC/USDT:USDT"
-InvalidOrder ... amount must be >= 0.001	замало контрактів	Збільш market_order_amount / limit_orders_amount або зменш orders_count
-UI пустий (позиції/ордера немає)	вхід не створився (була помилка)	Подивись docker logs -f trade-engine, виправ помилку з таблиці вище
-docker compose exec trade-engine ... не працює	service name ≠ container name	У Compose сервіс — engine, контейнер — trade-engine. Використовуй docker compose exec engine ... або docker exec -it trade-engine ...
-⚖️ Налаштування ризику (поради)
+setLeverage() requires linear/inverse market	спотовий символ	Вкажи symbol: "BTC/USDT:USDT"
+InvalidOrder ... amount must be >= min	замало контрактів	Збільш market_order_amount / limit_orders_amount або зменш orders_count
+UI порожній	угода не стартанула (була помилка)	Подивись docker logs -f trade-engine та виправ за таблицею вище
+docker compose exec trade-engine ... не працює	ім’я сервісу != ім’я контейнера	У Compose сервіс — engine, контейнер — trade-engine. Використовуй docker compose exec engine ... або docker exec -it trade-engine sh
+Налаштування ризику
 
-Часті ранні закриття → збільш trailing_sl_offset_percent (5–8) або вимкни move_sl_to_breakeven.
+Часті ранні виходи → збільш trailing_sl_offset_percent (5–8) або вимкни move_sl_to_breakeven.
 
-Дрібні сходинки пропускаються → зменш orders_count або збільш limit_orders_amount.
+Пропускаються дрібні сходинки → зменш orders_count або збільш limit_orders_amount.
 
-Тримати довше під наглядом → підвищ engine_deal_duration_minutes (напр. 240–1440).
+Довший моніторинг → підвищ engine_deal_duration_minutes (наприклад, 240–1440).
 
-🔐 Безпека
+Скріншоти
+<img width="1280" height="550" alt="image" src="https://github.com/user-attachments/assets/086354d6-5cf6-4288-8994-4fc4b6b72428" />
+<img width="1732" height="795" alt="image" src="https://github.com/user-attachments/assets/c795faa1-d8ec-4630-ab56-72f060d7fad1" />
+<img width="841" height="802" alt="image" src="https://github.com/user-attachments/assets/4f7cd4a5-9e10-4abc-974e-0f2ebbc6740c" />
 
-Ніколи не коміть реальні ключі.
+
+
+На GitHub ці шляхи відносні до кореня репозиторію.
+Рекомендовані імена: ui.png, bybit-key.png, unified-transfer.png.
+
+Безпека
+
+Не коміть реальні ключі.
 
 Якщо ключ “засвітили” — видаліть і перевипустіть.
 
-Проєкт призначений для тестнету / навчальних цілей.
+Проєкт зроблено для тестнету / навчальних цілей.
