@@ -1,154 +1,127 @@
-Trading Engine · Bybit Testnet
+# Trading Engine · Bybit Testnet
 
-Легкий Python-двигун для демо-торгівлі деривативами на Bybit Testnet:
+Легкий Python-двигун для **демо-торгівлі деривативами** на Bybit Testnet:
 
-старт угоди з JSON-конфігом;
+- старт угоди з JSON-конфігом;
+- TP у % від **середньої** (автореплейс після усереднення);
+- «драбинка» лімітних ордерів для добору;
+- клієнтський SL / Trailing / Breakeven;
+- простий веб-UI та **єдиний REST ендпоінт** `/`.
 
-TP у % від середньої (автореплейс після усереднення);
+---
 
-«драбинка» лімітних ордерів для добору;
+## Зміст
+- [Вимоги](#вимоги)
+- [Швидкий старт (Docker)](#швидкий-старт-docker)
+- [Змінні оточення `.env`](#змінні-оточення-env)
+- [Конфіг угоди](#конфіг-угоди)
+- [Користування UI та API](#користування-ui-та-api)
+- [Як це працює](#як-це-працює)
+- [Траблшутінг](#траблшутінг)
+- [Налаштування ризику](#налаштування-ризику)
+- [Скріншоти](#скріншоти)
+- [Безпека](#безпека)
 
-клієнтський SL / Trailing / Breakeven;
+---
 
-простий веб-UI та єдиний REST ендпоінт /.
+## Вимоги
+- Docker і Docker Compose  
+- Обліковка **Bybit Demo (Testnet)** з USDT у **Unified Trading**
 
-Зміст
+---
 
-Вимоги
+## Швидкий старт (Docker)
 
-Швидкий старт (Docker)
+1. **Створи Testnet API-ключ**: Demo → *Create New Key* → *API Transaction*. Дай права **Orders** і **Positions** у *Unified Trading / Contract*.
+2. **Заповни `.env`** у корені (є приклад у `.env_sample`).
+3. Запусти:  
+   `docker compose up --build -d`
+4. Відкрий **http://localhost:8000/**. Якщо `free_usdt: 0` — зроби *Assets → Transfer* з Funding у Unified Trading (USDT).
+5. Натисни **Start from file** і вибери свій `config.json`.
 
-Змінні оточення .env
+---
 
-Конфіг угоди (що заповнювати)
+## Змінні оточення `.env`
 
-Користування UI та API
+- `BYBIT_API_KEY` — testnet API key  
+- `BYBIT_SECRET` — testnet API secret  
+- `MARKET_TYPE` — тип ринку для ccxt (використовуй `swap`)  
+- `POLL_INTERVAL` — період моніторингу (сек), напр. `2.0`
 
-Як це працює
+> Не коміть реальні ключі.
 
-Траблшутінг
+---
 
-Налаштування ризику
+## Конфіг угоди
 
-Скріншоти
+Використовуй **деривативний символ** (напр. `BTC/USDT:USDT`).
 
-Безпека
+Головні поля:
+- `side`: `long` або `short`
+- `market_order_amount`: ноціонал входу в USDT
+- `limit_orders_amount`: бюджет на драбинку (USDT)
+- `leverage`: плече
+- `tp_orders`: список рівнів (`price_percent`, `quantity_percent`)
+- `limit_orders`: `range_percent`, `orders_count`, `engine_deal_duration_minutes`
+- захист: `stop_loss_percent`, `trailing_sl_offset_percent`, `move_sl_to_breakeven`
 
-Вимоги
+Шаблон: див. **`sample_config.json`** у репо.
 
-Docker і Docker Compose
+---
 
-Обліковка Bybit Demo (Testnet) з USDT у Unified Trading
+## Користування UI та API
 
-Швидкий старт (Docker)
+- **UI**: кнопка **Start from file** → обери `config.json`. Нижче видно TP, драбинку, логи.  
+- **Stop**: зупиняє моніторинг (ордери на біржі не чіпає).
 
-Створи Testnet API-ключ у Bybit: Demo → Create New Key → API Transaction. Дай права Orders і Positions в Unified Trading / Contract.
+**REST (усе на `/`):**
+- `GET /` — UI  
+- `GET /?json=1` — стан у JSON (включно з `free_usdt`)  
+- `POST /` — старт угоди (multipart `file` **або** raw JSON у тілі)  
+- `DELETE /` — стоп моніторингу
 
-Заповни .env у корені репозиторію. Є приклад у .env_sample.
+---
 
-Запусти контейнер: docker compose up --build -d.
+## Як це працює
 
-Відкрий http://localhost:8000/. Якщо у статусі free_usdt: 0 — зроби Assets → Transfer з Funding у Unified Trading (USDT).
+1. Вхід **ринком** на `market_order_amount` (USDT) → кількість ≈ USDT/ціна (з округленням до мін-лота).
+2. **TP** ставляться як *reduceOnly* від **середньої**; після добору середня змінюється — TP **перевиставляються**.
+3. **Драбинка**: `orders_count` ліміток проти ціни в межах `range_percent` від середньої; бюджет `limit_orders_amount` ділиться порівну.
+4. **Захист**: `stop_loss_percent`, `trailing_sl_offset_percent`, `move_sl_to_breakeven`. За тригером — ринкове `reduceOnly` закриття.
+5. Моніторинг триває до `engine_deal_duration_minutes`, потім автозупинка.
 
-Натисни Start from file і підвантаж свій config.json.
+---
 
-Змінні оточення .env
+## Траблшутінг
 
-BYBIT_API_KEY — твій testnet API key
+- **10003 API key is invalid** — ключ не testnet або не підхопився. Пересоздай у Demo, онови `.env`, перезапусти контейнер.  
+- **110007 ab not enough / InsufficientFunds** — у Unified Trading немає USDT. *Assets → Transfer*.  
+- **setLeverage… requires linear/inverse market** — вказано спот. Використай `BTC/USDT:USDT`.  
+- **InvalidOrder … amount must be >= min** — надто мала кількість. Підвищ `market_order_amount`/`limit_orders_amount` або зменш `orders_count`.  
+- **UI порожній** — подивись `docker logs -f trade-engine`, виправ причину.
 
-BYBIT_SECRET — твій testnet API secret
+---
 
-MARKET_TYPE — тип ринку для ccxt, використовуй swap
+## Налаштування ризику
 
-POLL_INTERVAL — період моніторингу в секундах (наприклад 2.0)
+- Ранні виходи по трейлінгу → збільш `trailing_sl_offset_percent` (5–8) або вимкни `move_sl_to_breakeven`.  
+- Пропускаються сходинки → зменш `orders_count` або збільш `limit_orders_amount`.  
+- Замало часу → збільш `engine_deal_duration_minutes` (наприклад 240–1440).
 
-Не коміть реальні ключі. Для продакшена — IP-обмеження, окремі креденшли, обережний мані-менеджмент.
+---
 
-Конфіг угоди (що заповнювати)
+## Скріншоти
 
-Використовуй деривативний символ (наприклад BTC/USDT:USDT).
-Поля конфігу:
+Поклади файли в `docs/img/` і встав посиланням:
 
-account — довільна назва (напр. Bybit/Testnet);
+<img width="1280" height="550" alt="image" src="https://github.com/user-attachments/assets/90bf7896-de05-4c84-b69c-504b4e9304c1" />
+<img width="1280" height="575" alt="image" src="https://github.com/user-attachments/assets/9f5f876c-c7d7-4fdf-a7ec-848a268f7de5" />
+<img width="841" height="802" alt="image" src="https://github.com/user-attachments/assets/4f7cd4a5-9e10-4abc-974e-0f2ebbc6740c" />
 
-symbol — ринок (напр. BTC/USDT:USDT);
+---
 
-side — long або short;
+## Безпека
 
-market_order_amount — ноціонал входу в USDT;
+- Не коміть реальні ключі; для реальних грошей — IP-whitelist, окремі креденшли та суворі ліміти.  
+- Проєкт для тестів/навчання.
 
-limit_orders_amount — загальний бюджет на драбинку (USDT);
-
-leverage — плече;
-
-stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven — параметри захисту;
-
-tp_orders — масив рівнів TP (кожен має price_percent і quantity_percent);
-
-limit_orders.range_percent, limit_orders.orders_count, limit_orders.engine_deal_duration_minutes.
-
-У репозиторії є файлик-приклад sample_config.json — просто скопіюй і відредагуй під себе.
-
-Користування UI та API
-
-UI: натисни Start from file, завантаж config.json. У таблицях побачиш TP, драбинку та логи.
-
-Зупинка: натисни Stop (зупиняє моніторинг; ордери на біржі не чіпає).
-
-REST (усі запити на /):
-
-GET / — UI
-
-GET /?json=1 — поточний стан у JSON (включно з free_usdt)
-
-POST / — старт угоди (або multipart/form-data з полем file, або raw JSON у тілі)
-
-DELETE / — зупинка моніторингу
-
-Як це працює
-
-Вхід ринком на суму market_order_amount (USDT). Кількість контрактів ≈ USDT / ціна, з округленням до мін-лота.
-
-TP ставляться як reduceOnly від середньої ціни. Після доборів середня змінюється — TP перевиставляються.
-
-Драбинка: orders_count ліміток проти поточної ціни в межах range_percent від середньої. Бюджет limit_orders_amount розподіляється порівну.
-
-Захист: stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven. За тригером — ринкове reduceOnly закриття.
-
-Моніторинг і робота двигуна тривають до engine_deal_duration_minutes, далі — автозупинка.
-
-Траблшутінг
-
-AuthenticationError 10003 (API key is invalid) — ключ не testnet або не зчитався. Пересоздай ключ у Demo, онови .env, перезапусти контейнер.
-
-InsufficientFunds / 110007 (ab not enough) — у Unified Trading бракує USDT. Зроби Assets → Transfer.
-
-setLeverage() requires linear/inverse market — вказано спот. Використай BTC/USDT:USDT.
-
-InvalidOrder … amount must be >= min — надто мала кількість. Підійми market_order_amount/limit_orders_amount або зменш orders_count.
-
-UI порожній / угода не стартує — подивись docker logs -f trade-engine, виправ причину з підказок вище.
-
-Налаштування ризику
-
-Ранні виходи по трейлінгу — підвищ trailing_sl_offset_percent (5–8) або вимкни move_sl_to_breakeven.
-
-Пропускаються сходинки — зменш orders_count або збільш limit_orders_amount.
-
-Замало часу — збільш engine_deal_duration_minutes (напр. 240–1440).
-
-Скріншоти
-
-Поклади картинки в docs/img/ і встав у README так:
-
-![UI](docs/img/ui.png)
-
-![Orders](docs/img/orders.png)
-
-Безпека
-
-Ніколи не коміть реальні ключі.
-
-Для реальних грошей: IP-whitelist, окремі ролі, строгі ліміти, перевірка ордерів на стороні біржі.
-
-Проєкт зроблено для тестів/навчання.
