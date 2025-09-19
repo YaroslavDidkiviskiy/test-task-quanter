@@ -1,0 +1,50 @@
+{
+  // Інфо/оточення (для логів; торгує все одно за ключами з .env)
+  "account": "Bybit/Testnet",
+
+  // Торговий інструмент:
+  // РЕКОМЕНДАЦІЯ: "BTC/USDT:USDT" (linear swap). Двигун вміє автомапити "BTC/USDT" -> ":USDT".
+  "symbol": "BTC/USDT:USDT",
+
+  // Напрям угоди: "long" або "short"
+  "side": "short",
+
+  // Скільки USDT зайти MARKET-ом одразу (ноціонал, не кількість контрактів)
+  "market_order_amount": 2000,
+
+  // Клієнтський Stop-Loss у % від середньої ціни входу (не біржовий conditional)
+  "stop_loss_percent": 7,
+
+  // Торгівельний трейлінг: відстань у % від локального екстремуму
+  "trailing_sl_offset_percent": 3,
+
+  // Загальна сума USDT на драбинку усереднення (ділиться на orders_count)
+  "limit_orders_amount": 2000,
+
+  // Плече (на рівні інструмента)
+  "leverage": 10,
+
+  // Переносити SL у беззбиток, коли ціна пройде через середню в наш бік
+  "move_sl_to_breakeven": true,
+
+  // TP рівні. ВІДСОТКИ від поточної СЕРЕДНЬОЇ (перераховуються після добору).
+  // Для LONG ціни вище середньої; для SHORT — нижче. quantity_percent бажано ~ сумарно 100%.
+  "tp_orders": [
+    { "price_percent": 2.0, "quantity_percent": 25.0 },
+    { "price_percent": 3.0, "quantity_percent": 25.0 },
+    { "price_percent": 5.0, "quantity_percent": 25.0 },
+    { "price_percent": 7.0, "quantity_percent": 25.0 }
+  ],
+
+  // Налаштування драбинки усереднення (limit-ордери проти ціни)
+  "limit_orders": {
+    // Діапазон у % від середньої: для LONG — нижче, для SHORT — вище
+    "range_percent": 5.0,
+
+    // Кількість сходинок (сума USDT ділиться порівну між ними)
+    "orders_count": 6,
+
+    // Максимальна тривалість роботи двигуна (монітор/оновлення), хвилин
+    "engine_deal_duration_minutes": 110
+  }
+}
