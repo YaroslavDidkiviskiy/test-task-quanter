@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Trading Engine (Testnet)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    body { background:#0f1115; color:#e2e8f0; font-family:ui-sans-serif,system-ui,Segoe UI,Roboto; margin:0; }
+    .wrap { max-width:980px; margin:24px auto; padding:0 16px; }
+    h1 { font-size:20px; margin-bottom:8px; }
+    .card { background:#171923; padding:16px; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.24); margin-bottom:16px; }
+    button { background:#2563eb; color:white; border:0; padding:8px 12px; border-radius:8px; cursor:pointer; }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+    input,select { background:#0b0d13; color:#e2e8f0; border:1px solid #2d3748; border-radius:8px; padding:8px; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { padding:6px 8px; border-bottom:1px solid #2d3748; font-size:14px;}
+    .muted { color:#9aa4b2; font-size:12px; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trading Engine (Testnet)</h1>
+
+  <div class="card">
+    <div class="row">
+      <input id="file" type="file" accept=".json"/>
+      <button id="startBtn">Start from file</button>
+      <button id="stopBtn">Stop</button>
+      <span class="muted" id="running"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Status</h3>
+    <pre id="position" class="muted">—</pre>
+  </div>
+
+  <div class="card">
+    <h3>TP orders</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Side</th><th>Amount</th><th>Price</th></tr></thead>
+      <tbody id="tp"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Limit ladder</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Side</th><th>Amount</th><th>Price</th></tr></thead>
+      <tbody id="ladder"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Logs</h3>
+    <pre id="logs" class="muted" style="max-height:280px; overflow:auto;">—</pre>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function fetchStatus(){
+  const r = await fetch('/', { headers: { 'Accept': 'application/json' } });
+  if(!r.ok){
+    const t = await r.text();
+    $('running').textContent = `ERR: ${t.slice(0,200)}`;
+    return;
+  }
+  const s = await r.json();
+  const usdt = (typeof s.free_usdt === 'number') ? ` · free USDT: ${s.free_usdt.toFixed(2)}` : '';
+  $('running').textContent = (s.running ? 'RUNNING' : 'IDLE') + usdt;
+
+  $('position').textContent = JSON.stringify(s.position, null, 2) || '—';
+
+  const r1 = (s.tp_orders||[]).map(o=>`
+    <tr>
+      <td>${o.id}</td><td>${o.side}</td>
+      <td>${o.amount?.toFixed ? o.amount.toFixed(6) : o.amount}</td>
+      <td>${o.price?.toFixed ? o.price.toFixed(2) : o.price}</td>
+    </tr>`).join('');
+  $('tp').innerHTML = r1 || `<tr><td colspan="4" class="muted">—</td></tr>`;
+
+  const r2 = (s.limit_ladder||[]).map(o=>`
+    <tr>
+      <td>${o.id}</td><td>${o.side}</td>
+      <td>${o.amount?.toFixed ? o.amount.toFixed(6) : o.amount}</td>
+      <td>${o.price?.toFixed ? o.price.toFixed(2) : o.price}</td>
+    </tr>`).join('');
+  $('ladder').innerHTML = r2 || `<tr><td colspan="4" class="muted">—</td></tr>`;
+
+  $('logs').textContent = (s.logs||[]).slice(-200).join('\n') || '—';
+}
+
+$('startBtn').onclick = async () => {
+  const f = $('file').files[0];
+  const opts = {};
+  if (f){
+    const fd = new FormData(); fd.append('file', f);
+    opts.method = 'POST';
+    opts.body = fd;
+  } else {
+    alert('Attach config.json'); return;
+  }
+  const r = await fetch('/', opts);
+  if(!r.ok){
+    // покажемо людинозрозумілу помилку
+    let msg = await r.text();
+    try { const j = JSON.parse(msg); msg = j.detail || msg; } catch {}
+    alert(msg);
+  }
+  await fetchStatus();
+};
+
+$('stopBtn').onclick = async () => {
+  await fetch('/', { method:'DELETE' });
+  await fetchStatus();
+};
+
+setInterval(fetchStatus, 1500);
+fetchStatus();
+</script>
+</body>
+</html>
