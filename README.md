@@ -1,18 +1,16 @@
-Trading Engine (Bybit Testnet)
+Trading Engine · Bybit Testnet
 
-Невеликий Python-двигун для демо-торгівлі деривативами на Bybit Testnet.
+Легкий Python-двигун для демо-торгівлі деривативами на Bybit Testnet:
 
-Що вміє:
+старт угоди з JSON-конфігом;
 
-запуск угоди з JSON-конфігом;
+TP у % від середньої (автореплейс після усереднення);
 
-тейк-профіти у відсотках від середньої ціни входу (TP автоматично перевиставляються після усереднення);
-
-«драбинка» лімітних ордерів для добору позиції;
+«драбинка» лімітних ордерів для добору;
 
 клієнтський SL / Trailing / Breakeven;
 
-простий веб-UI та один REST-ендпоінт /.
+простий веб-UI та єдиний REST ендпоінт /.
 
 Зміст
 
@@ -20,9 +18,9 @@ Trading Engine (Bybit Testnet)
 
 Швидкий старт (Docker)
 
-Змінні оточення (.env)
+Змінні оточення .env
 
-Конфіг угоди (поля)
+Конфіг угоди (що заповнювати)
 
 Користування UI та API
 
@@ -38,140 +36,119 @@ Trading Engine (Bybit Testnet)
 
 Вимоги
 
-Встановлені Docker і Docker Compose
+Docker і Docker Compose
 
 Обліковка Bybit Demo (Testnet) з USDT у Unified Trading
 
 Швидкий старт (Docker)
 
-Створи Testnet API-ключ
-Увімкни Demo Trading → Create New Key → API Transaction. Дозволи Read/Write для Unified Trading → Contract → Orders і Positions. IP restriction можна залишити No IP restriction (для тестів ок). Збережи API Key і Secret (secret показують лише один раз).
+Створи Testnet API-ключ у Bybit: Demo → Create New Key → API Transaction. Дай права Orders і Positions в Unified Trading / Contract.
 
-Налаштуй .env у корені репозиторію
-Потрібні змінні:
-— BYBIT_API_KEY — твій testnet key
-— BYBIT_SECRET — твій testnet secret
-— MARKET_TYPE — swap
-— POLL_INTERVAL — наприклад 2.0
-Є шаблон .env_sample.
+Заповни .env у корені репозиторію. Є приклад у .env_sample.
 
-Запусти контейнер
-docker compose up --build -d
-Логи: docker logs -f trade-engine або docker compose logs -f engine.
+Запусти контейнер: docker compose up --build -d.
 
-Відкрий інтерфейс
-http://localhost:8000/. Якщо у статусі free_usdt: 0 — зроби Assets → Transfer з Funding у Unified Trading (USDT).
+Відкрий http://localhost:8000/. Якщо у статусі free_usdt: 0 — зроби Assets → Transfer з Funding у Unified Trading (USDT).
 
-Змінні оточення (.env)
+Натисни Start from file і підвантаж свій config.json.
 
-BYBIT_API_KEY — Testnet API key
+Змінні оточення .env
 
-BYBIT_SECRET — Testnet API secret
+BYBIT_API_KEY — твій testnet API key
+
+BYBIT_SECRET — твій testnet API secret
 
 MARKET_TYPE — тип ринку для ccxt, використовуй swap
 
-POLL_INTERVAL — інтервал моніторингу в секундах
+POLL_INTERVAL — період моніторингу в секундах (наприклад 2.0)
 
-Конфіг угоди (поля)
+Не коміть реальні ключі. Для продакшена — IP-обмеження, окремі креденшли, обережний мані-менеджмент.
 
-Використовуй деривативний символ, наприклад BTC/USDT:USDT.
+Конфіг угоди (що заповнювати)
 
-Головні поля:
+Використовуй деривативний символ (наприклад BTC/USDT:USDT).
+Поля конфігу:
 
-account — довільний підпис, наприклад Bybit/Testnet
+account — довільна назва (напр. Bybit/Testnet);
 
-symbol — символ ринку, наприклад BTC/USDT:USDT
+symbol — ринок (напр. BTC/USDT:USDT);
 
-side — long або short
+side — long або short;
 
-market_order_amount — ноціонал входу в USDT
+market_order_amount — ноціонал входу в USDT;
 
-stop_loss_percent — відсоток для клієнтського SL
+limit_orders_amount — загальний бюджет на драбинку (USDT);
 
-trailing_sl_offset_percent — відступ трейлінгу у відсотках
+leverage — плече;
 
-limit_orders_amount — загальна сума для драбинки (USDT)
+stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven — параметри захисту;
 
-leverage — плече
+tp_orders — масив рівнів TP (кожен має price_percent і quantity_percent);
 
-move_sl_to_breakeven — якщо true, SL переноситься в беззбиток при русі ціни
+limit_orders.range_percent, limit_orders.orders_count, limit_orders.engine_deal_duration_minutes.
 
-Тейк-профіти:
-
-tp_orders[].price_percent — рівень TP у відсотках від середньої ціни
-
-tp_orders[].quantity_percent — частка позиції, яка закривається на цьому рівні
-
-Драбинка:
-
-limit_orders.range_percent — діапазон драбинки від середньої ціни у відсотках
-
-limit_orders.orders_count — кількість сходинок
-
-limit_orders.engine_deal_duration_minutes — час роботи моніторингу (хв)
-
-У репозиторії є зразок файлу: sample_config.json.
+У репозиторії є файлик-приклад sample_config.json — просто скопіюй і відредагуй під себе.
 
 Користування UI та API
 
-На головній сторінці натисни Start from file і підвантаж config.json.
+UI: натисни Start from file, завантаж config.json. У таблицях побачиш TP, драбинку та логи.
 
-Кнопка Stop зупиняє лише моніторинг (існуючі ордери на біржі не змінюються).
+Зупинка: натисни Stop (зупиняє моніторинг; ордери на біржі не чіпає).
 
-Ендпоінти (усі на /):
+REST (усі запити на /):
 
-GET / — UI (HTML)
+GET / — UI
 
-GET /?json=1 — JSON-стан (включно з free_usdt)
+GET /?json=1 — поточний стан у JSON (включно з free_usdt)
 
-POST / — старт угоди; можна передати multipart/form-data з полем file або raw JSON з конфігом у тілі
+POST / — старт угоди (або multipart/form-data з полем file, або raw JSON у тілі)
 
 DELETE / — зупинка моніторингу
 
 Як це працює
 
-Вхід ринком на ноціонал market_order_amount (USDT). Кількість контрактів розраховується як USDT / остання ціна, далі — округлення до мін-лота.
+Вхід ринком на суму market_order_amount (USDT). Кількість контрактів ≈ USDT / ціна, з округленням до мін-лота.
 
-TP ставляться як reduceOnly у відсотках від середньої ціни входу.
+TP ставляться як reduceOnly від середньої ціни. Після доборів середня змінюється — TP перевиставляються.
 
-Драбинка лімітних ордерів розкладається проти поточного руху в межах range_percent; загальний limit_orders_amount ділиться порівну між сходинками.
+Драбинка: orders_count ліміток проти поточної ціни в межах range_percent від середньої. Бюджет limit_orders_amount розподіляється порівну.
 
-Клієнтський захист: stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven. За тригером позиція закривається market reduceOnly.
+Захист: stop_loss_percent, trailing_sl_offset_percent, move_sl_to_breakeven. За тригером — ринкове reduceOnly закриття.
 
-Моніторинг із періодом POLL_INTERVAL. Після engine_deal_duration_minutes двигун зупиняється.
+Моніторинг і робота двигуна тривають до engine_deal_duration_minutes, далі — автозупинка.
 
 Траблшутінг
 
-AuthenticationError 10003 (API key is invalid): ключ не testnet або не зчитався. Створи ключ у Demo → API Transaction з правами Orders і Positions, онови .env, перезапусти контейнер (docker compose down && up --build -d).
+AuthenticationError 10003 (API key is invalid) — ключ не testnet або не зчитався. Пересоздай ключ у Demo, онови .env, перезапусти контейнер.
 
-InsufficientFunds / 110007 (ab not enough): немає USDT у Unified Trading. Зроби Assets → Transfer з Funding у Unified Trading (USDT).
+InsufficientFunds / 110007 (ab not enough) — у Unified Trading бракує USDT. Зроби Assets → Transfer.
 
-setLeverage() requires linear/inverse market: вказано спотовий символ. Використай BTC/USDT:USDT.
+setLeverage() requires linear/inverse market — вказано спот. Використай BTC/USDT:USDT.
 
-InvalidOrder … amount must be >= min: замало контрактів. Збільш market_order_amount або limit_orders_amount, або зменш orders_count.
+InvalidOrder … amount must be >= min — надто мала кількість. Підійми market_order_amount/limit_orders_amount або зменш orders_count.
 
-Порожній UI/нічого не відбувається: угода не стартанула через помилку. Перевір логи контейнера та виправ за підказками вище.
-
-Не працює docker compose exec trade-engine …: ім’я сервісу в Compose — engine, контейнера — trade-engine. Використовуй docker compose exec engine … або docker exec -it trade-engine sh.
+UI порожній / угода не стартує — подивись docker logs -f trade-engine, виправ причину з підказок вище.
 
 Налаштування ризику
 
-Ранні виходи за трейлінгом — підвищ trailing_sl_offset_percent (5–8) або вимкни move_sl_to_breakeven.
+Ранні виходи по трейлінгу — підвищ trailing_sl_offset_percent (5–8) або вимкни move_sl_to_breakeven.
 
-Пропускаються дрібні сходинки — зменш orders_count або збільш limit_orders_amount.
+Пропускаються сходинки — зменш orders_count або збільш limit_orders_amount.
 
-Замало часу на відпрацювання плану — підвищ engine_deal_duration_minutes (наприклад 240–1440).
+Замало часу — збільш engine_deal_duration_minutes (напр. 240–1440).
 
 Скріншоти
 
-Збережи зображення у теку docs/img/ (наприклад docs/img/ui.png) і додай у README так:
+Поклади картинки в docs/img/ і встав у README так:
+
 ![UI](docs/img/ui.png)
+
 ![Orders](docs/img/orders.png)
 
 Безпека
 
-Не коміть API-ключі у репозиторій.
+Ніколи не коміть реальні ключі.
 
-Для продакшена додай IP-обмеження у ключ, окремі креденшли та перевірку ордерів на стороні біржі.
+Для реальних грошей: IP-whitelist, окремі ролі, строгі ліміти, перевірка ордерів на стороні біржі.
 
-Цей проєкт призначений для тестів і навчання.
+Проєкт зроблено для тестів/навчання.
